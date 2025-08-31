@@ -5,7 +5,7 @@ This function is used to compare the analytically implemented derivative (callin
 with the result from `obtain_numerical_material_derivative!(diff, m, ϵ, args...; numdiffsettings...)`.
 
 * `diff::MaterialDerivatives` can be passed to check that the old value of `diff.dsdp` is correctly accounted for.
-* `comparesettings::NamedTuple` are passed as `kwargs` to [`isapprox`](@ref), which compares the two matrices. Please see its docstring for further details.
+* `comparesettings::NamedTuple` are passed as `kwargs` to `Base.isapprox`, which compares the two matrices. Please see its docstring for further details.
 * `numdiffsettings::NamedTuple` are passed as `kwargs` to [`obtain_numerical_material_derivative!`](@ref), please see its docstring for further details. 
 """
 function test_derivative(m, ϵ, state, Δt; comparesettings = (), numdiffsettings = (), diff = MaterialDerivatives(m))
