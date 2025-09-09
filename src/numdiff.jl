@@ -5,7 +5,7 @@ This function is used to compare the analytically implemented derivative (callin
 with the result from `obtain_numerical_material_derivative!(diff, m, ϵ, args...; numdiffsettings...)`.
 
 * `diff::MaterialDerivatives` can be passed to check that the old value of `diff.dsdp` is correctly accounted for.
-* `comparesettings::NamedTuple` are passed as `kwargs` to `Base.isapprox`, which compares the two matrices. Please see its docstring for further details.
+* `comparesettings::NamedTuple` are passed as `kwargs` to [`compare_derivatives`](@ref), which compares the two matrices. Please see its docstring for further details.
 * `numdiffsettings::NamedTuple` are passed as `kwargs` to [`obtain_numerical_material_derivative!`](@ref), please see its docstring for further details. 
 """
 function test_derivative(m, ϵ, state, Δt; comparesettings = (), numdiffsettings = (), diff = MaterialDerivatives(m))
@@ -17,15 +17,19 @@ function test_derivative(m, ϵ, state, Δt; comparesettings = (), numdiffsetting
     _, dσdϵ, _ = material_response(m, ϵ, state, Δt, cache, extras)
     differentiate_material!(diff, m, ϵ, state, Δt, cache, extras, dσdϵ)
     obtain_numerical_material_derivative!(diff_num, m, ϵ, state, Δt; numdiffsettings...)
+    y, Δx = material_derivative_scaling(diff, m, ϵ, state, Δt; numdiffsettings...)
     for key in fieldnames(typeof(diff))
         @testset "$key" begin
-            check = isapprox(getfield(diff, key), getfield(diff_num, key); comparesettings...)
+            scaled_error, maxtol = compare_derivatives(getfield(diff, key), getfield(diff_num, key), y[key], Δx[key]; comparesettings...)
+            check = all(x -> x ≤ 1, scaled_error)
             @test check
             if !check
-                println("Printing derivative, numerical derivative, and relative diff of each term")
+                println(key, " failed (maxtol = ", maxtol, ")")
+                println("Printing derivative, numerical derivative, relative diff, and scaled error")
                 display(getfield(diff, key))
                 display(getfield(diff_num, key))
                 display((getfield(diff, key) .- getfield(diff_num, key)) ./ (1e-100 .+ abs.(getfield(diff, key)) + abs.(getfield(diff_num, key))))
+                display(scaled_error)
                 println("Done printing for failed test above")
             end
         end
@@ -81,6 +85,19 @@ function obtain_numerical_material_derivative!(
 
 end
 
+function material_derivative_scaling(::MMB.MaterialDerivatives, m, ϵ, old, Δt; fdtype = Val{:forward}, relstep = FiniteDiff.default_relstep(fdtype, eltype(ϵ)), absstep = relstep)
+    Δp = max.(relstep * tovector(m), absstep)
+    Δe = max.(relstep * tovector(ϵ), absstep)
+    Δx = Dict(
+        :dσdp => Δp, :dsdp => Δp,
+        :dσdϵ => Δe, :dsdϵ => Δe)
+    σ, _, state = material_response(m, ϵ, old, Δt)
+    y = Dict(
+        :dσdp => tovector(σ), :dsdp => tovector(state),
+        :dσdϵ => tovector(σ), :dsdϵ => tovector(state))
+    return y, Δx
+end
+
 """
     obtain_numerical_material_derivative!(ssd, stress_state, m, ϵ, old, Δt; fdtype = Val{:forward}, kwargs...)
 
@@ -121,4 +138,57 @@ function obtain_numerical_material_derivative!(
     
     dsdⁿs = numjac(funs.s.s, sv)
     numjac!(ssd.mderiv.dsdp, funs.s.p, p); ssd.mderiv.dsdp .+= dsdⁿs * dⁿsdp
+end
+
+"""
+    compare_derivatives(dydx::Matrix, dydx_num::Matrix, y::Vector, Δx::Vector; tolscale = 1)
+
+Comparing derivatives with numerical values can be tricky, due to catastrophic cancellation easily 
+making the numerical derivatives inaccurate. This function uses the following formula to determine
+the appropriate tolerance for comparing the derivatives, which is based on the values of the 
+differentiated function, 'y', the pertubation for each entry, `Δx`. 'atol = 2 * eps(y) / Δx`.
+
+It returns the error scaled by the tolerance for all entries, `e`, such that the derivatives
+can be considered equal if `all(x -> x ≤ 1, e)`
+"""
+function compare_derivatives(dydx::AbstractMatrix, dydx_num::AbstractMatrix, y::Vector, Δx::Vector; 
+        tolscale = 1, 
+        atol_min = typemin(eltype(y)),
+        rtol_min = typemin(eltype(y)),
+        print_tol = false,
+        )
+    tolmatrix = similar(dydx)
+    scaled_error = similar(dydx)
+    maxtol = zero(eltype(y))
+    for (i, (dyi_dx, dyi_dx_num, yi)) in enumerate(zip(eachrow(dydx), eachrow(dydx_num), y))
+        for (j, (dyi_dxj, dyi_dxj_num, Δxj)) in enumerate(zip(dyi_dx, dyi_dx_num, Δx))
+            atol = max(tolscale * 2 * eps(yi) / Δxj + eps(zero(yi)), atol_min, rtol_min * abs(dyi_dxj))
+            scaled_error[i, j] = abs(dyi_dxj - dyi_dxj_num) / atol
+            maxtol = max(maxtol, atol)
+            tolmatrix[i, j] = atol
+        end
+    end
+    if print_tol
+        display(tolmatrix)
+    end
+    return scaled_error, maxtol
+end
+
+"""
+    are_derivatives_equal(args...; maxtol = Inf, kwargs...)
+
+Calls [`compare_derivatives`](@ref) (forwarding `args` and `kwargs`) and checks if the 
+derivatives are equal.
+The maximum allowed absolute tolerance can also be checked by setting `maxtol`.
+"""
+function are_derivatives_equal(args...; maxtol = nothing, kwargs...)
+    scaled_error, highest_tol = compare_derivatives(args...; kwargs...)
+    all_approx_equal = all(x -> x ≤ 1, scaled_error)
+    if !all_approx_equal
+        @show argmax(scaled_error), maximum(scaled_error)
+    end
+    @test all_approx_equal
+    if maxtol !== nothing
+        @test highest_tol ≤ maxtol
+    end
 end

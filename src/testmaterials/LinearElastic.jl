@@ -8,12 +8,13 @@ struct LinearElastic{T} <: AbstractMaterial
     G::T
     K::T
 end
-function get_stiffness(m::LinearElastic)
-    I2 = one(SymmetricTensor{2,3})
-    Ivol = I2⊗I2
-    Isymdev = minorsymmetric(otimesu(I2,I2) - Ivol/3)
-    return 2*m.G*Isymdev + m.K*Ivol
+function get_stiffness(m::LinearElastic{T}) where {T}
+    I2 = one(SymmetricTensor{2, 3, T})
+    Ivol = I2 ⊗ I2
+    Isymdev = minorsymmetric(otimesu(I2, I2) - Ivol / 3)
+    return 2 * m.G * Isymdev + m.K * Ivol
 end
+MMB.get_params_eltype(::LinearElastic{T}) where {T} = T
 
 function MMB.material_response(
         m::LinearElastic, ϵ::SymmetricTensor{2},

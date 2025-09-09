@@ -9,7 +9,10 @@ using MaterialModelsTesting:
 @testset "MaterialModelsTesting.jl" begin
     elastic = LinearElastic(0.52, 0.77)
     viscoelastic = ViscoElastic(elastic, LinearElastic(0.33, 0.54), 0.36)
-    for m in (elastic, viscoelastic)    
+    for m in (elastic, viscoelastic)
+        @testset "testsuite" begin
+            MaterialModelsTesting.test_material(m)
+        end 
         @testset "Initial response" begin
             ϵ = rand(SymmetricTensor{2,3}) * 1e-3
             Δt = 1e-2

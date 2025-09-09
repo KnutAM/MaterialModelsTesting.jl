@@ -5,6 +5,7 @@ struct ViscoElastic{T} <: AbstractMaterial
     E2::LinearElastic{T}
     η::T
 end
+MMB.get_params_eltype(::ViscoElastic{T}) where {T} = T
 
 function MMB.get_num_params(m::ViscoElastic)
     return sum(get_num_params.((m.E1, m.E2))) + 1
@@ -29,7 +30,9 @@ end
 struct ViscoElasticState{T} <: AbstractMaterialState
     ϵv::SymmetricTensor{2,3,T,6}
 end
-MMB.initial_material_state(::ViscoElastic) = ViscoElasticState(zero(SymmetricTensor{2,3}))
+function MMB.initial_material_state(::ViscoElastic{T}) where {T}
+    return ViscoElasticState(zero(SymmetricTensor{2, 3, T}))
+end
 
 MMB.get_num_statevars(s::ViscoElasticState) = 6
 MMB.get_statevar_eltype(::ViscoElasticState{T}) where {T} = T
