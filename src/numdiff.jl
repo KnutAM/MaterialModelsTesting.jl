@@ -153,8 +153,8 @@ can be considered equal if `all(x -> x ≤ 1, e)`
 """
 function compare_derivatives(dydx::AbstractMatrix, dydx_num::AbstractMatrix, y::Vector, Δx::Vector; 
         tolscale = 1, 
-        atol_min = typemin(eltype(y)),
-        rtol_min = typemin(eltype(y)),
+        atol_min = eps(eltype(y)),
+        rtol_min = sqrt(eps(eltype(y))),
         print_tol = false,
         )
     tolmatrix = similar(dydx)
@@ -162,7 +162,7 @@ function compare_derivatives(dydx::AbstractMatrix, dydx_num::AbstractMatrix, y::
     maxtol = zero(eltype(y))
     for (i, (dyi_dx, dyi_dx_num, yi)) in enumerate(zip(eachrow(dydx), eachrow(dydx_num), y))
         for (j, (dyi_dxj, dyi_dxj_num, Δxj)) in enumerate(zip(dyi_dx, dyi_dx_num, Δx))
-            atol = max(tolscale * 2 * eps(yi) / Δxj + eps(zero(yi)), atol_min, rtol_min * abs(dyi_dxj))
+            atol = max(tolscale * 2 * eps(yi) / Δxj, atol_min, rtol_min * abs(dyi_dxj))
             scaled_error[i, j] = abs(dyi_dxj - dyi_dxj_num) / atol
             maxtol = max(maxtol, atol)
             tolmatrix[i, j] = atol
