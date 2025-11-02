@@ -10,6 +10,7 @@ import MaterialModelsBase as MMB
 include("numdiff.jl")
 include("loadcases.jl")
 include("testmaterials/LinearElastic.jl")
+include("testmaterials/NeoHooke.jl")
 include("testmaterials/ViscoElastic.jl")
 include("testsuite.jl")
 
