@@ -35,7 +35,7 @@ function runstrain(m, ϵ_ij_end::Union{Number, AbstractTensor}, ij, t_end, num_s
     state = initial_material_state(m)
     cache = allocate_material_cache(m)
     Δt = t_end / num_steps
-    σv = zeros(get_params_eltype(m), num_steps + 1)
+    σv = zeros(get_vector_eltype(m), num_steps + 1)
     for (k, scale) in enumerate(range(0, 1, num_steps + 1)[2:end])
         ϵ = ϵ_end * scale
         σ, _, state = material_response(m, ϵ, state, Δt, cache)
@@ -72,7 +72,7 @@ function runstrain_diff(m, ϵ_ij_end::Union{Number, AbstractTensor}, ij, t_end, 
     extras = allocate_differentiation_output(m)
     Δt = t_end / num_steps
     σv = zeros(num_steps + 1)
-    dσdp = zeros(num_steps + 1, get_num_params(m))
+    dσdp = zeros(num_steps + 1, get_vector_length(m))
     for (k, scale) in enumerate(range(0, 1, num_steps + 1)[2:end])
         ϵ = ϵ_end * scale
         old_state = state
@@ -101,7 +101,7 @@ function runstresstate(stress_state, m, ϵend::Union{Number, AbstractTensor}, ij
     state = initial_material_state(m)
     cache = allocate_material_cache(m)
     Δt = t_end / num_steps
-    σv = zeros(get_params_eltype(m), num_steps + 1)
+    σv = zeros(get_vector_eltype(m), num_steps + 1)
     for (k, scale) in enumerate(range(0, 1, num_steps + 1)[2:end])
         ϵ = ϵt * scale
         σ, _, state = material_response(stress_state, m, ϵ, state, Δt, cache)
@@ -136,7 +136,7 @@ function runstresstate_diff(stress_state, m, ϵend::Union{Number, AbstractTensor
     extras = allocate_differentiation_output(m)
     Δt = t_end / num_steps
     σv = zeros(num_steps + 1)
-    dσdp = zeros(num_steps + 1, get_num_params(m))
+    dσdp = zeros(num_steps + 1, get_vector_length(m))
     for (k, scale) in enumerate(range(0, 1, num_steps + 1)[2:end])
         ϵ = ϵt * scale
         old_state = state

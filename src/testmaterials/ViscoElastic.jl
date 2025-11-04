@@ -5,24 +5,24 @@ struct ViscoElastic{T} <: AbstractMaterial
     E2::LinearElastic{T}
     η::T
 end
-MMB.get_params_eltype(::ViscoElastic{T}) where {T} = T
+MMB.get_vector_eltype(::ViscoElastic{T}) where {T} = T
 
-function MMB.get_num_params(m::ViscoElastic)
-    return sum(get_num_params.((m.E1, m.E2))) + 1
+function MMB.get_vector_length(m::ViscoElastic)
+    return sum(get_vector_length.((m.E1, m.E2))) + 1
 end
 
 function MMB.tovector!(v::AbstractVector, m::ViscoElastic; offset = 0)
     i = offset
-    tovector!(v, m.E1; offset = i); i += get_num_params(m.E1)
-    tovector!(v, m.E2; offset = i); i += get_num_params(m.E2)
+    tovector!(v, m.E1; offset = i); i += get_vector_length(m.E1)
+    tovector!(v, m.E2; offset = i); i += get_vector_length(m.E2)
     v[i + 1] = m.η
     return v
 end
 
 function MMB.fromvector(v::AbstractVector, m::ViscoElastic; offset = 0)
     i = offset
-    E1 = fromvector(v, m.E1; offset = i); i += get_num_params(m.E1)
-    E2 = fromvector(v, m.E2; offset = i); i += get_num_params(m.E2)
+    E1 = fromvector(v, m.E1; offset = i); i += get_vector_length(m.E1)
+    E2 = fromvector(v, m.E2; offset = i); i += get_vector_length(m.E2)
     η = v[i + 1]
     return ViscoElastic(E1, E2, η)
 end
@@ -34,8 +34,8 @@ function MMB.initial_material_state(::ViscoElastic{T}) where {T}
     return ViscoElasticState(zero(SymmetricTensor{2, 3, T}))
 end
 
-MMB.get_num_statevars(s::ViscoElasticState) = 6
-MMB.get_statevar_eltype(::ViscoElasticState{T}) where {T} = T
+MMB.get_vector_length(s::ViscoElasticState) = 6
+MMB.get_vector_eltype(::ViscoElasticState{T}) where {T} = T
 MMB.tovector!(v, s::ViscoElasticState; offset = 0) = tovector!(v, s.ϵv; offset)
 MMB.fromvector(v, s::ViscoElasticState; offset = 0) = ViscoElasticState(fromvector(v, s.ϵv; offset))
 

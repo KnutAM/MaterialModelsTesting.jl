@@ -14,9 +14,10 @@ function free_energy(m::NeoHooke, F::Tensor{2,3})
     return ΨG + ΨK
 end
 
-MMB.get_params_eltype(::NeoHooke{T}) where {T} = T
+MMB.get_vector_eltype(::NeoHooke{T}) where {T} = T
+MMB.get_vector_length(::NeoHooke) = 2
 MMB.get_tensorbase(::NeoHooke) = Tensor{2,3}
-MMB.get_num_params(::NeoHooke) = 2
+
 function MMB.tovector!(v::Vector, m::NeoHooke; offset = 0)
     v[1 + offset] = m.G
     v[2 + offset] = m.K

@@ -14,7 +14,7 @@ function get_stiffness(m::LinearElastic{T}) where {T}
     Isymdev = minorsymmetric(otimesu(I2, I2) - Ivol / 3)
     return 2 * m.G * Isymdev + m.K * Ivol
 end
-MMB.get_params_eltype(::LinearElastic{T}) where {T} = T
+MMB.get_vector_eltype(::LinearElastic{T}) where {T} = T
 
 function MMB.material_response(
         m::LinearElastic, ϵ::SymmetricTensor{2},
@@ -25,7 +25,7 @@ function MMB.material_response(
     return σ, dσdϵ, old
 end
 
-MMB.get_num_params(::LinearElastic) = 2
+MMB.get_vector_length(::LinearElastic) = 2
 function MMB.tovector!(v::Vector, m::LinearElastic; offset = 0)
     v[1 + offset] = m.G
     v[2 + offset] = m.K

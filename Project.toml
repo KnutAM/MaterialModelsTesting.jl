@@ -22,7 +22,9 @@ Test = "1.11.0"
 julia = "1.10"
 
 [sources]
-MaterialModelsBase = {url = "https://github.com/KnutAM/MaterialModelsBase.jl"}
+#MaterialModelsBase = {url = "https://github.com/KnutAM/MaterialModelsBase.jl"}
+MaterialModelsBase = {rev = "kam/diffinterface", url = "https://github.com/knutam/MaterialModelsBase.jl"}
+#MaterialModelsBase = {path = "/Users/knutan/.julia/dev/MaterialModelsBase"}
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

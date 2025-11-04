@@ -4,6 +4,8 @@ using Test
 using Tensors, StaticArrays, LinearAlgebra
 using ForwardDiff, FiniteDiff
 
+const DualT = ForwardDiff.Dual{ForwardDiff.Tag{:MatTest, T}, T, 2} where {T}
+
 # Overloaded functions
 import MaterialModelsBase as MMB
 

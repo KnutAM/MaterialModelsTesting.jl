@@ -26,8 +26,8 @@ numerical derivative, although this test is only approximate.
 
 ## `conversions` (default: `false`)
 Tests the conversions `tovector`, `tovector!`, `fromvector` for both the material parameters
-and the state variables, along with the associated methods `get_num_params`, `get_num_statevars`,
-`get_params_eltype`, and `get_statevar_eltype`. Furthermore, it is tested that `initial_material_state`
+and the state variables, along with the associated methods `get_vector_length`, `get_num_statevars`, and
+`get_vector_eltype`. Furthermore, it is tested that `initial_material_state`
 returns a state using the element type from the material, and that the conversions respect the different
 element types of the given vector. Since also `Float32` is used in this testing, it is important not to 
 default to using `Float64` when creating e.g. state variables, i.e. use `zero(Tensor{2,3,T})` instead 
@@ -102,7 +102,15 @@ function _test_material_basic(m::AbstractMaterial, loadinfo)
     end
 end
 
-function test_vectorconversion(::Type{T}, obj, num_items) where {T}
+"""
+    test_vectorconversion(T::Type, obj)
+
+Test conversions using `tovector!`, `tovector`, and `fromvector`
+of the object `obj`, for the number type `T` in the vector (which may 
+be different from that stored in `obj`).
+"""
+function test_vectorconversion(::Type{T}, obj) where {T}
+    num_items = get_vector_length(obj)
     x0 = [rand(T) for _ in 1:num_items]
     obj1 = fromvector(x0, obj)
     @test eltype(tovector(obj1)) == T  # Conversion respects eltype of x0
@@ -115,14 +123,13 @@ function test_vectorconversion(::Type{T}, obj, num_items) where {T}
     obj1 = fromvector(x0, obj; offset = 1)
     @test eltype(tovector(obj1)) == T  # Conversion respects eltype of x0
     x1 = similar(x0)
-    a, b = rand(T, 2)
+    a, b = (rand(T), rand(T))
     x1[1] = a; x1[end] = b;
     @test x1 === tovector!(x1, obj1; offset = 1) # Returns mutated vector
     @test x1[2:end-1] ≈ x0[2:end-1]              # Values correctly updated
     @test a == x1[1]    # First value not touched
     @test b == x1[end]  # Last value not touched
 end
-
 
 function test_material_conversions(args...)
     @testset "Conversion tests" begin
@@ -133,20 +140,20 @@ end
 function _test_material_conversions(m0::AbstractMaterial, loadinfo)
     v0 = tovector(m0)
     s0 = initial_material_state(m0)
-    @test length(v0) == MMB.get_num_params(m0)
+    @test length(v0) == MMB.get_vector_length(m0)
     @test length(tovector(s0)) == MMB.get_num_statevars(m0)
     
-    @testset for T in (Float32, Float64, BigFloat)
-        v1 = [rand(T) for _ in 1:MMB.get_num_params(m0)]
+    @testset for T in (Float32, Float64, DualT{Float32})
+        v1 = [rand(T) for _ in 1:MMB.get_vector_length(m0)]
         m1 = fromvector(v1, m0)
         @testset "material parameters" begin
-            @test MMB.get_params_eltype(m1) == T
-            test_vectorconversion(T, m0, MMB.get_num_params(m0))
+            @test MMB.get_vector_eltype(m1) == T
+            test_vectorconversion(T, m0)
         end
         @testset "state variables" begin
             state = initial_material_state(m1)
             @test eltype(tovector(state)) == T # Type taken from material type
-            test_vectorconversion(T, s0, MMB.get_num_statevars(m0))
+            test_vectorconversion(T, s0)
         end
     end
     return nothing
