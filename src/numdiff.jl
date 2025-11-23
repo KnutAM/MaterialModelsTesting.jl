@@ -53,6 +53,7 @@ function obtain_numerical_material_derivative!(
     p = map(typeconvert, tovector(m))
     ⁿs = map(typeconvert, tovector(old))
     e = map(typeconvert, tovector(ϵ))
+    old_typeconv = fromvector(ⁿs, old)
     
     function numjac(f::F, x) where {F}
         sz = (length(f(x)), length(x))
@@ -63,8 +64,8 @@ function obtain_numerical_material_derivative!(
 
     funs = NamedTuple{(:σ, :s)}(
         (s = svec -> tovector(material_response(m, ϵ, fromvector(svec, old), Δt, cache)[i]), # f(s)
-         p = pvec -> tovector(material_response(fromvector(pvec, m), ϵ, old, Δt, cache)[i]), # f(p)
-         ϵ = evec -> tovector(material_response(m, fromvector(evec, ϵ), old, Δt, cache)[i])) # f(ϵ)
+         p = pvec -> tovector(material_response(fromvector(pvec, m), ϵ, old_typeconv, Δt, cache)[i]), # f(p)
+         ϵ = evec -> tovector(material_response(m, fromvector(evec, ϵ), old_typeconv, Δt, cache)[i])) # f(ϵ)
          for i in (1, 3)
     )
 
