@@ -3,6 +3,7 @@ using MaterialModelsBase
 using Test
 using Tensors, StaticArrays, LinearAlgebra
 using ForwardDiff, FiniteDiff
+using DoubleFloats: Double64
 
 const DualT = ForwardDiff.Dual{ForwardDiff.Tag{:MatTest, T}, T, 2} where {T}
 

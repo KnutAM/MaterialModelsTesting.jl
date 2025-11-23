@@ -85,12 +85,11 @@ function runstrain_diff(m, ϵ_ij_end::Union{Number, AbstractTensor}, ij, t_end, 
 end
 
 """
-    runstresstate(stress_state, m, TensorBase, ϵ_end::Union{Number, AbstractTensor}, ij::NTuple{2, Int}, t_end, num_steps)
+    runstresstate(stress_state, m, ϵ_end::Union{Number, AbstractTensor}, ij::NTuple{2, Int}, t_end, num_steps)
 
 Simulate the `stress_state` from zero to `ϵ_end` strain, and return σ[i,j].
 If `ϵ_end::Number` is passed, loading is applied to the strain `ϵ_end eᵢ⊗eⱼ`. 
-`TensorBase` should be `SymmetricTensor{2,3}` for small strain and `Tensor{2,3}` for finite strain. For finite strain,
-the deformation gradient `I2 + ϵ_end eᵢ⊗eⱼ` is applied. 
+For finite strain, the deformation gradient `I2 + ϵ_end eᵢ⊗eⱼ` is applied. 
 
 Returns the vector of stresses and the final state variables.
 """

@@ -1,6 +1,7 @@
 using MaterialModelsTesting
 using Test
 using Tensors, FiniteDiff
+using DoubleFloats
 using MaterialModelsBase
 using MaterialModelsTesting:
     LinearElastic, ViscoElastic, NeoHooke, 
@@ -15,7 +16,7 @@ using MaterialModelsTesting:
     @testset "$(typeof(m))" for m in (elastic, hyperelastic, viscoelastic)
         TB = MaterialModelsBase.get_tensorbase(m)
         @testset "testsuite" begin
-            MaterialModelsTesting.test_material(m)
+            MaterialModelsTesting.test_material(m; basics = true, conversions = true, differentiation = true)
         end
         @testset "Initial response" begin
             #ϵ = 
@@ -56,16 +57,19 @@ using MaterialModelsTesting:
         end
         
         ϵij = 0.01
+        itersettings = (;tolerance = 1e-14, max_iter = 100)
         for (stress_state, ij) in (
-                (UniaxialStress(), (1,1)), (UniaxialStrain(), (1,1)), 
-                (UniaxialNormalStress(), (1,1)), (UniaxialNormalStress(), (2,1)),
-                (PlaneStress(), (2, 2)), (PlaneStrain(), (2, 1)),
-                (GeneralStressState(TB(SymmetricTensor{2,3,Bool}((true, false, false, false, true, true))), ϵij * rand(TB); max_iter = 100), (2,2))
+                (UniaxialStress(; itersettings...), (1,1)), (UniaxialStrain(), (1,1)), 
+                (UniaxialNormalStress(; itersettings...), (1,1)), (UniaxialNormalStress(; itersettings...), (2,1)),
+                (PlaneStress(; itersettings...), (2, 2)), (PlaneStrain(), (2, 1)),
+                (GeneralStressState(TB(SymmetricTensor{2,3,Bool}((false, trues(5)...))), zero(TB); itersettings...), (1,1)), # UniaxialStress
+                (GeneralStressState(TB(SymmetricTensor{2,3,Bool}((true, false, false, false, true, true))), ϵij * rand(TB)/10; itersettings...), (2,2)),
                 )
             @testset "$(nameof(typeof(stress_state))), (i,j) = ($(ij[1]), $(ij[2]))" begin
                 num_steps = 1; t_end = 0.01
                 stressfun(p) = runstresstate(stress_state, fromvector(p, m), ϵij, ij, t_end, num_steps)[1]
-                dσij_dp_num = FiniteDiff.finite_difference_jacobian(stressfun, tovector(m), Val{:central}; relstep = 1e-6)
+                pvec = map(Double64, tovector(m))
+                dσij_dp_num = FiniteDiff.finite_difference_jacobian(stressfun, pvec, Val{:central}; relstep = 1e-10)
                 σv, state, dσij_dp, diff = runstresstate_diff(stress_state, m, ϵij, ij, t_end, num_steps)
                 @test isapprox(dσij_dp, dσij_dp_num; rtol = 1e-6)
             end

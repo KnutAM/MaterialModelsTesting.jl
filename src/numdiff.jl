@@ -45,13 +45,15 @@ for a time step `Δt`. `fdtype` and `kwargs...` are passed to `FiniteDiff.finite
 function obtain_numerical_material_derivative!(
         deriv::MMB.MaterialDerivatives,
         m::AbstractMaterial, ϵ, old, Δt; 
-        fdtype = Val{:forward}, kwargs...
+        fdtype = Val{:forward}, 
+        typeconvert = identity, 
+        kwargs...
         )
     cache = allocate_material_cache(m)
-    p = tovector(m)
-    ⁿs = tovector(old)
-    e = tovector(ϵ)
-
+    p = map(typeconvert, tovector(m))
+    ⁿs = map(typeconvert, tovector(old))
+    e = map(typeconvert, tovector(ϵ))
+    
     function numjac(f::F, x) where {F}
         sz = (length(f(x)), length(x))
         prod(sz) == 0 && return zeros(sz...)
@@ -85,7 +87,7 @@ function obtain_numerical_material_derivative!(
 
 end
 
-function material_derivative_scaling(::MMB.MaterialDerivatives, m, ϵ, old, Δt; fdtype = Val{:forward}, relstep = FiniteDiff.default_relstep(fdtype, eltype(ϵ)), absstep = relstep)
+function material_derivative_scaling(::MMB.MaterialDerivatives, m, ϵ, old, Δt; fdtype = Val{:forward}, relstep = FiniteDiff.default_relstep(fdtype, eltype(ϵ)), absstep = relstep, kwargs...)
     Δp = max.(relstep * tovector(m), absstep)
     Δe = max.(relstep * tovector(ϵ), absstep)
     Δx = Dict(
@@ -120,10 +122,13 @@ function obtain_numerical_material_derivative!(
         return FiniteDiff.finite_difference_jacobian(f, x, fdtype; kwargs...)
     end
     numjac!(J, f::F, x) where {F} = copy!(J, numjac(f, x))
-
+    
+    _tovector(t::AbstractTensor{<:Any, 2}) = tovector(MMB.expand_tensordim(stress_state, t))
+    _tovector(t::AbstractTensor{<:Any, 1}) = tovector(MMB.expand_tensordim(stress_state, t))
+    _tovector(t::Any) = tovector(t)
     funs = NamedTuple{(:σ, :ϵ, :s)}(
-        (s = svec -> tovector(material_response(stress_state, m, ϵ, fromvector(svec, old), Δt, cache)[i]), # f(s)
-         p = pvec -> tovector(material_response(stress_state, fromvector(pvec, m), ϵ, old, Δt, cache)[i])) # f(p)
+        (s = svec -> _tovector(material_response(stress_state, m, ϵ, fromvector(svec, old), Δt, cache)[i]), # f(s)
+         p = pvec -> _tovector(material_response(stress_state, fromvector(pvec, m), ϵ, old, Δt, cache)[i])) # f(p)
          for i in (1, 4, 3)
     )
     
@@ -136,7 +141,7 @@ function obtain_numerical_material_derivative!(
     dϵdⁿs = numjac(funs.ϵ.s, ⁿs);
     numjac!(ssd.dϵdp, funs.ϵ.p, p); ssd.dϵdp .+= dϵdⁿs * dⁿsdp
     
-    dsdⁿs = numjac(funs.s.s, sv)
+    dsdⁿs = numjac(funs.s.s, ⁿs)
     numjac!(ssd.mderiv.dsdp, funs.s.p, p); ssd.mderiv.dsdp .+= dsdⁿs * dⁿsdp
 end
 

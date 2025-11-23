@@ -166,5 +166,42 @@ function test_material_differentiation(args...)
     return nothing
 end
 function _test_material_differentiation(m::AbstractMaterial, loadinfo)
-    @info "test_material_differentiation not implemented"
+    # Extract some basic data to use later
+    (;Δt, ϵsmall, ϵlarge, nsteps) = loadinfo
+    TB = MMB.get_tensorbase(m)
+    
+    @testset "At ϵsmall" begin
+        ϵ = get_strain(TB, ϵsmall)
+        test_derivative(m, ϵ, initial_material_state(m), Δt; numdiffsettings = (; typeconvert = Double64))
+    end
+    @testset "At ϵlarge" begin
+        # Δϵ = (get_strain(TB, ϵlarge) - get_strain(TB, 0.0)) / nsteps
+        ϵ = get_strain(TB, ϵlarge)
+        stressfun(p) = runstrain(fromvector(p, m), ϵ, (1,1), Δt * nsteps, nsteps)[1]
+        pvec = [Double64(x) for x in tovector(m)]
+        dσ11_dp_num = FiniteDiff.finite_difference_jacobian(stressfun, pvec, Val{:central}; relstep = 1e-12)
+        σv, state, dσ11_dp, diff = runstrain_diff(m, ϵ, (1,1), Δt * nsteps, nsteps)
+        @test σv ≈ stressfun(tovector(m))
+        @test dσ11_dp ≈ dσ11_dp_num
+    end
+    @testset "At ϵsmall, stress state" begin
+        ss = UniaxialStress(; tolerance = 1e-10)
+        ϵ = get_strain(TB, ϵsmall)
+        stressfun(p) = runstresstate(ss, fromvector(p, m), ϵ, (1,1), Δt, 1)[1]
+        pvec = [Double64(x) for x in tovector(m)]
+        dσ11_dp_num = FiniteDiff.finite_difference_jacobian(stressfun, pvec, Val{:central}; relstep = 1e-12)
+        σv, state, dσ11_dp, diff = runstresstate_diff(ss, m, ϵ, (1,1), Δt, 1)
+        @test σv ≈ stressfun(tovector(m))
+        @test dσ11_dp ≈ dσ11_dp_num
+    end
+    @testset "At ϵlarge, stress state" begin
+        ss = UniaxialNormalStress(; tolerance = 1e-10)
+        ϵ = get_strain(TB, ϵlarge)
+        stressfun(p) = runstresstate(ss, fromvector(p, m), ϵ, (1,2), Δt * nsteps, nsteps)[1]
+        pvec = [Double64(x) for x in tovector(m)]
+        dσ12_dp_num = FiniteDiff.finite_difference_jacobian(stressfun, pvec, Val{:central}; relstep = 1e-12)
+        σv, state, dσ12_dp, diff = runstresstate_diff(ss, m, ϵ, (1,2), Δt * nsteps, nsteps)
+        @test σv ≈ stressfun(tovector(m))
+        @test dσ12_dp ≈ dσ12_dp_num
+    end
 end
