@@ -14,7 +14,7 @@ Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
-MaterialModelsBase = {path = "/Users/knutan/.julia/dev/MaterialModelsBase"}
+MaterialModelsBase = {url = "https://github.com/knutam/MaterialModelsBase.jl"}
 
 [compat]
 DoubleFloats = "1.5.0"
